@@ -1,4 +1,4 @@
-package org.appledash.noodel;
+package org.appledash.noodel.render;
 
 import org.appledash.noodel.util.Mth;
 

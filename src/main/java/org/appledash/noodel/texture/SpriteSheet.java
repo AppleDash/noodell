@@ -1,4 +1,4 @@
-package org.appledash.noodel;
+package org.appledash.noodel.texture;
 
 import java.awt.image.BufferedImage;
 

@@ -1,5 +1,7 @@
 package org.appledash.noodel;
 
+import org.appledash.noodel.util.Vec2;
+
 import java.util.ArrayList;
 import java.util.List;
 

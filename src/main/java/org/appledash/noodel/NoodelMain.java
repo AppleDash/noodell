@@ -1,5 +1,9 @@
 package org.appledash.noodel;
 
+import org.appledash.noodel.render.TexturedQuadRenderer;
+import org.appledash.noodel.texture.Terrain;
+import org.appledash.noodel.texture.Texture2D;
+import org.appledash.noodel.util.Vec2;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;

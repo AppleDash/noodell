@@ -1,4 +1,4 @@
-package org.appledash.noodel;
+package org.appledash.noodel.texture;
 
 public final class Terrain {
     public static final int OBSIDIAN = 37;

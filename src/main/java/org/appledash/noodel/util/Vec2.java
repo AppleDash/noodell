@@ -1,4 +1,4 @@
-package org.appledash.noodel;
+package org.appledash.noodel.util;
 
 public record Vec2(int x, int y) {
     public Vec2 add(Vec2 other) {

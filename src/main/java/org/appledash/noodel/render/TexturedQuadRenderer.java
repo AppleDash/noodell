@@ -1,5 +1,7 @@
-package org.appledash.noodel;
+package org.appledash.noodel.render;
 
+import org.appledash.noodel.texture.SpriteSheet;
+import org.appledash.noodel.texture.Texture2D;
 import org.appledash.noodel.util.ShaderProgram;
 
 import java.io.IOException;
