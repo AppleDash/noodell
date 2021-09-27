@@ -2,59 +2,50 @@ package org.appledash.noodel;
 
 import org.appledash.noodel.util.Vec2;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedList;
 
 public class Snake {
     public Direction direction = Direction.RIGHT;
     public Direction prevDirection = this.direction;
 
-    public final List<Vec2> path = new ArrayList<>();
+    private final LinkedList<Vec2> path = new LinkedList<>();
 
-    public void reset(Vec2 position) {
-        this.direction = Direction.RIGHT;
-        this.prevDirection = this.direction;
-
-        this.path.clear();
+    public Snake(Vec2 position) {
         this.path.add(position);
 
         for (int i = 1; i <= 3; i++) {
-            this.path.add(position.add(new Vec2(-i, 0)));
+            this.path.add(position.sub(i, 0));
         }
     }
 
     public void move(boolean hasEaten) {
-        this.path.add(0, this.path.get(0).add(this.direction.modifier));
+        this.path.addFirst(this.getHeadPos().add(this.direction.offset));
 
         if (!hasEaten) {
-            this.path.remove(this.path.size() - 1);
+            this.path.removeLast();
         }
 
         this.prevDirection = this.direction;
     }
 
     public boolean isIntersectingWith(Vec2 pos) {
-        Vec2 head = this.path.get(0);
-
-        return head.equals(pos);
-    }
-
-    public boolean isCollidedWith(Vec2 pos) {
-        Vec2 head = this.path.get(0);
-
-        return head.add(this.direction.modifier).equals(pos);
+        return this.getHeadPos().equals(pos);
     }
 
     public void setDirection(Direction direction) {
         this.direction = direction;
     }
 
+    public LinkedList<Vec2> getPath() {
+        return this.path;
+    }
+
     public Vec2 getHeadPos() {
-        return this.path.get(0);
+        return this.path.getFirst();
     }
 
     public Vec2 getNextPos() {
-        return this.getHeadPos().add(this.direction.modifier);
+        return this.getHeadPos().add(this.direction.offset);
     }
 
     public enum Direction {
@@ -63,10 +54,10 @@ public class Snake {
         LEFT(new Vec2(-1, 0)),
         RIGHT(new Vec2(1, 0));
 
-        private final Vec2 modifier;
+        private final Vec2 offset;
 
-        Direction(Vec2 modifier) {
-            this.modifier = modifier;
+        Direction(Vec2 offset) {
+            this.offset = offset;
         }
 
         public Direction reverse() {

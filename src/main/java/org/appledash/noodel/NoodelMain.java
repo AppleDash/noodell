@@ -33,12 +33,14 @@ public class NoodelMain {
     private static final int TILES_Y = SCALED_HEIGHT / TILE_SIZE;
     private static final int UPDATE_FREQUENCY = 100;
 
+    private final Random random = new Random();
+    private final Set<Vec2> apples = new HashSet<>();
+
     private long window;
     private TexturedQuadRenderer quadRenderer;
+
     private long lastUpdate = -1;
-    private final Snake snake = new Snake();
-    private final Set<Vec2> apples = new HashSet<>();
-    private final Random random = new Random();
+    private Snake snake;
     private boolean wantReset;
 
 
@@ -123,7 +125,7 @@ public class NoodelMain {
 
         do {
             pos = new Vec2((1 + this.random.nextInt(TILES_X - 2)), (1 + this.random.nextInt(TILES_Y - 2)));
-        } while (this.apples.contains(pos) && this.snake.path.contains(pos));
+        } while (this.apples.contains(pos) && this.snake.getPath().contains(pos)); // FIXME - Slow, have to walk the whole linked list for the snek
 
         return pos;
     }
@@ -159,7 +161,7 @@ public class NoodelMain {
                 this.drawTile(TILES_X - 1, y, Terrain.OBSIDIAN);
             }
 
-            for (Vec2 pathComponent : this.snake.path) {
+            for (Vec2 pathComponent : this.snake.getPath()) {
                 this.drawTile(pathComponent.x(), pathComponent.y(), Terrain.LIME_WOOL);
             }
 
@@ -218,8 +220,16 @@ public class NoodelMain {
             this.wantReset = true;
         }
 
-        for (Vec2 snakeSegment : this.snake.path.subList(0, this.snake.path.size() - 2)) {
-            if (nextPos.equals(snakeSegment)) {
+        /* this is a little weird, but the reason I do it this way is because it's a linked list and iterating like this is faster. */
+        int pathSize = this.snake.getPath().size();
+        Iterator<Vec2> iter = this.snake.getPath().iterator();
+
+        for (int i = 0; iter.hasNext(); i++) {
+            if (i == 0 || i == pathSize - 2) {
+                continue;
+            }
+
+            if (nextPos.equals(iter.next())) {
                 this.wantReset = true;
                 break;
             }
@@ -228,7 +238,7 @@ public class NoodelMain {
 
     private void reset() {
         this.apples.clear();
-        this.snake.reset(new Vec2(TILES_X / 2, TILES_Y / 2));
+        this.snake = new Snake(new Vec2(TILES_X / 2, TILES_Y / 2));
 
         for (int i = 0; i < 5; i++) {
             this.spawnApple();
