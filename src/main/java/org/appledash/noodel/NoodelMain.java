@@ -46,17 +46,12 @@ public final class NoodelMain {
     private boolean wantReset;
 
     private void init() {
-        GLFWErrorCallback.createPrint(System.err).set();
-
-        if (!glfwInit()) {
-            throw new IllegalStateException("Failed to initialize GLFW");
-        }
-
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
         this.window = glfwCreateWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT, "Noodell", NULL, NULL);
+
         if (this.window == NULL) {
             throw new IllegalStateException("Failed to create window");
         }
@@ -135,13 +130,8 @@ public final class NoodelMain {
                 this.drawTile(TILES_X - 1, y, Terrain.OBSIDIAN);
             }
 
-            for (Vec2 appleLocation : this.apples) {
-                this.drawTile(appleLocation.x(), appleLocation.y(), Terrain.RED_WOOL);
-            }
-
-            for (Vec2 pathComponent : this.snake.getPath()) {
-                this.drawTile(pathComponent.x(), pathComponent.y(), Terrain.LIME_WOOL);
-            }
+            this.drawTiles(this.apples, Terrain.RED_WOOL);
+            this.drawTiles(this.snake.getPath(), Terrain.LIME_WOOL);
 
             this.quadRenderer.draw();
 
@@ -200,6 +190,16 @@ public final class NoodelMain {
         }
     }
 
+    private void drawTile(int tileX, int tileY, int blockID) {
+        this.quadRenderer.putQuad(tileX * TILE_SIZE, tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE, blockID);
+    }
+
+    private void drawTiles(Iterable<Vec2> tiles, int blockId) {
+        for (Vec2 pos : tiles) {
+            this.drawTile(pos.x(), pos.y(), blockId);
+        }
+    }
+
     private void reset() {
         this.apples.clear();
         this.snake = new Snake(new Vec2(TILES_X / 2, TILES_Y / 2));
@@ -209,34 +209,7 @@ public final class NoodelMain {
         }
     }
 
-    private void drawTile(int tileX, int tileY, int blockID) {
-        this.quadRenderer.putQuad(tileX * TILE_SIZE, tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE, blockID);
-    }
-
-    public static void main(String[] args) {
-        NoodelMain noodelMain = new NoodelMain();
-        try {
-            noodelMain.init();
-            noodelMain.mainLoop();
-        } catch (Exception e) {
-            e.printStackTrace();
-            alertError("Error!", e.getMessage());
-        } finally {
-            glfwTerminate();
-            glfwSetErrorCallback(null).free();
-        }
-    }
-
-    private static void alertError(String title, String message) {
-        JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
-    }
-
-    private static void alertInfo(String title, String message) {
-        JOptionPane.showMessageDialog(null, message, title, JOptionPane.INFORMATION_MESSAGE);
-        System.out.println(title + " - " + message);
-    }
-
-    public void keyCallback(long window, int key, int scancode, int action, int mods) {
+    private void keyCallback(long window, int key, int scancode, int action, int mods) {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
             glfwSetWindowShouldClose(this.window, true);
         }
@@ -257,4 +230,35 @@ public final class NoodelMain {
             this.snake.setDirection(whereIWantToGo);
         }
     }
+
+    public static void main(String[] args) {
+        NoodelMain noodelMain = new NoodelMain();
+        try {
+            GLFWErrorCallback.createPrint(System.err).set();
+
+            if (!glfwInit()) {
+                throw new IllegalStateException("Failed to initialize GLFW");
+            }
+
+            noodelMain.init();
+            noodelMain.mainLoop();
+        } catch (Exception e) {
+            e.printStackTrace();
+            alertError("Error!", e.getMessage());
+        } finally {
+            glfwTerminate();
+            glfwSetErrorCallback(null).free();
+        }
+    }
+
+    private static void alertError(String title, String message) {
+        JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    private static void alertInfo(String title, String message) {
+        JOptionPane.showMessageDialog(null, message, title, JOptionPane.INFORMATION_MESSAGE);
+        System.out.println(title + " - " + message);
+    }
+
+
 }

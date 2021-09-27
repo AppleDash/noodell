@@ -14,7 +14,6 @@ public class TexturedQuadRenderer {
     private final int vertexBufferId;
     private final int uvBufferId;
     private final ShaderProgram shader;
-    private final int textureUniformId;
     private final SpriteSheet spriteSheet;
     private final Tesselator2D tesselator2D = new Tesselator2D();
 
@@ -25,10 +24,12 @@ public class TexturedQuadRenderer {
 
         try {
             this.shader = ShaderProgram.loadFromResources("shaders/2d");
-            this.textureUniformId = this.shader.getUniformLocation("textureSampler");
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load shader!", e);
         }
+
+        this.shader.use();
+        glUniform1i(this.shader.getUniformLocation("textureSampler"), 0);
     }
 
     public void putQuad(int x, int y, int w, int h, int spriteIndex) {
@@ -40,7 +41,7 @@ public class TexturedQuadRenderer {
         float bSz = this.spriteSheet.getSpriteWidth();
 
         this.tesselator2D.putVertices(
-                new float[]{
+                new float[] {
                         x, y, // bottom left
                         (x + w), y, // bottom right
                         x, (y + h), // top left
@@ -64,40 +65,20 @@ public class TexturedQuadRenderer {
         float[] uvs = this.tesselator2D.getUvs();
         int count = this.tesselator2D.getUsedCapacity();
 
-        glBindBuffer(GL_ARRAY_BUFFER, this.vertexBufferId);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ARRAY_BUFFER, this.uvBufferId);
-        glBufferData(GL_ARRAY_BUFFER, uvs, GL_STATIC_DRAW);
-
         this.shader.use();
 
         glActiveTexture(GL_TEXTURE0);
         this.spriteSheet.getTexture().bind();
-        glUniform1i(this.textureUniformId, 0);
 
         glEnableVertexAttribArray(0);
-
         glBindBuffer(GL_ARRAY_BUFFER, this.vertexBufferId);
-        glVertexAttribPointer(
-                0,
-                2,
-                GL_FLOAT,
-                false,
-                0,
-                0
-        );
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
+        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
 
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, this.uvBufferId);
-        glVertexAttribPointer(
-                1,
-                2,
-                GL_FLOAT,
-                false,
-                0,
-                0
-        );
+        glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
+        glBufferData(GL_ARRAY_BUFFER, uvs, GL_STATIC_DRAW);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
