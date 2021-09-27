@@ -3,6 +3,7 @@ package org.appledash.noodel;
 import org.appledash.noodel.render.TexturedQuadRenderer;
 import org.appledash.noodel.texture.Terrain;
 import org.appledash.noodel.texture.Texture2D;
+import org.appledash.noodel.util.FrameCounter;
 import org.appledash.noodel.util.Vec2;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
@@ -23,7 +24,7 @@ import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
-public class NoodelMain {
+public final class NoodelMain {
     private static final int DEFAULT_WIDTH = 1600;
     private static final int DEFAULT_HEIGHT = 1200;
     private static final int SCALED_WIDTH = 800;
@@ -35,6 +36,7 @@ public class NoodelMain {
 
     private final Random random = new Random();
     private final Set<Vec2> apples = new HashSet<>();
+    private final FrameCounter frameCounter = new FrameCounter();
 
     private long window;
     private TexturedQuadRenderer quadRenderer;
@@ -42,7 +44,6 @@ public class NoodelMain {
     private long lastUpdate = -1;
     private Snake snake;
     private boolean wantReset;
-
 
     private void init() {
         GLFWErrorCallback.createPrint(System.err).set();
@@ -60,32 +61,12 @@ public class NoodelMain {
             throw new IllegalStateException("Failed to create window");
         }
 
-        glfwSetKeyCallback(this.window, (window, key, scancode, action, modifiers) -> {
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
-                glfwSetWindowShouldClose(this.window, true);
-            }
-
-            if (action != GLFW_PRESS) {
-                return;
-            }
-
-            Snake.Direction whereIWantToGo = switch (key) {
-                case GLFW_KEY_W -> Snake.Direction.UP;
-                case GLFW_KEY_A -> Snake.Direction.LEFT;
-                case GLFW_KEY_S -> Snake.Direction.DOWN;
-                case GLFW_KEY_D -> Snake.Direction.RIGHT;
-                default -> this.snake.direction;
-            };
-
-            if (whereIWantToGo != this.snake.direction && whereIWantToGo != this.snake.prevDirection.reverse()) {
-                this.snake.setDirection(whereIWantToGo);
-            }
-        });
-
+        glfwSetKeyCallback(this.window, this::keyCallback);
         glfwSetWindowSizeCallback(this.window, (window, width, height) -> {
             glViewport(0, 0, width, height);
         });
 
+        /* Center the window */
         try (MemoryStack stack = stackPush()) {
             IntBuffer pWidth = stack.mallocInt(1);
             IntBuffer pHeight = stack.mallocInt(1);
@@ -103,17 +84,12 @@ public class NoodelMain {
         }
 
         glfwMakeContextCurrent(this.window);
-        glfwSwapInterval(0); // vsync
+        glfwSwapInterval(1); // vsync
         glfwShowWindow(this.window);
 
         GL.createCapabilities();
 
-        try (MemoryStack stack = stackPush()) {
-            IntBuffer intBuffer = stack.mallocInt(1);
-            glGenVertexArrays(intBuffer);
-            glBindVertexArray(intBuffer.get());
-        }
-
+        glBindVertexArray(glGenVertexArrays());
 
         this.quadRenderer = new TexturedQuadRenderer(Texture2D.fromResource("textures/terrain.png"), 16, 16);
 
@@ -137,14 +113,12 @@ public class NoodelMain {
     private void mainLoop() {
         glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
-        int i = 0;
-        float n = 0;
         while (!glfwWindowShouldClose(this.window)) {
-            long now = System.currentTimeMillis();
+            long frameStart = System.currentTimeMillis();
 
-            if ((now - this.lastUpdate) >= UPDATE_FREQUENCY) {
+            if ((frameStart - this.lastUpdate) >= UPDATE_FREQUENCY) {
                 this.update();
-                this.lastUpdate = now;
+                this.lastUpdate = frameStart;
             }
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -161,12 +135,12 @@ public class NoodelMain {
                 this.drawTile(TILES_X - 1, y, Terrain.OBSIDIAN);
             }
 
-            for (Vec2 pathComponent : this.snake.getPath()) {
-                this.drawTile(pathComponent.x(), pathComponent.y(), Terrain.LIME_WOOL);
-            }
-
             for (Vec2 appleLocation : this.apples) {
                 this.drawTile(appleLocation.x(), appleLocation.y(), Terrain.RED_WOOL);
+            }
+
+            for (Vec2 pathComponent : this.snake.getPath()) {
+                this.drawTile(pathComponent.x(), pathComponent.y(), Terrain.LIME_WOOL);
             }
 
             this.quadRenderer.draw();
@@ -179,19 +153,7 @@ public class NoodelMain {
                 this.wantReset = false;
             }
 
-            long end = System.currentTimeMillis();
-
-            n += end - now;
-
-            if (i == 10) {
-                // System.out.printf("ms per frame = %.2f\n", (n / (float) i));
-                // System.out.printf("frames per second = %.2f\n", 1000.0f / (n / (float) i));
-
-                i = 0;
-                n = 0;
-            }
-
-            i++;
+            this.frameCounter.update(System.currentTimeMillis() - frameStart);
         }
 
         this.quadRenderer.delete();
@@ -220,11 +182,13 @@ public class NoodelMain {
             this.wantReset = true;
         }
 
-        /* this is a little weird, but the reason I do it this way is because it's a linked list and iterating like this is faster. */
+        /* this is a little weird, but the reason I do it this way is that the snake's path is a linked list,
+         * and iterating like this is faster. */
         int pathSize = this.snake.getPath().size();
         Iterator<Vec2> iter = this.snake.getPath().iterator();
 
         for (int i = 0; iter.hasNext(); i++) {
+            /* don't care about colliding with our own head or our tail (said tail is about to disappear) */
             if (i == 0 || i == pathSize - 2) {
                 continue;
             }
@@ -246,10 +210,7 @@ public class NoodelMain {
     }
 
     private void drawTile(int tileX, int tileY, int blockID) {
-        int startX = tileX * TILE_SIZE;
-        int startY = tileY * TILE_SIZE;
-        this.quadRenderer.putQuad(startX, startY, TILE_SIZE, TILE_SIZE, blockID);
-        // this.quadRenderer.draw();
+        this.quadRenderer.putQuad(tileX * TILE_SIZE, tileY * TILE_SIZE, TILE_SIZE, TILE_SIZE, blockID);
     }
 
     public static void main(String[] args) {
@@ -273,5 +234,27 @@ public class NoodelMain {
     private static void alertInfo(String title, String message) {
         JOptionPane.showMessageDialog(null, message, title, JOptionPane.INFORMATION_MESSAGE);
         System.out.println(title + " - " + message);
+    }
+
+    public void keyCallback(long window, int key, int scancode, int action, int mods) {
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
+            glfwSetWindowShouldClose(this.window, true);
+        }
+
+        if (action != GLFW_PRESS) {
+            return;
+        }
+
+        Snake.Direction whereIWantToGo = switch (key) {
+            case GLFW_KEY_W -> Snake.Direction.UP;
+            case GLFW_KEY_A -> Snake.Direction.LEFT;
+            case GLFW_KEY_S -> Snake.Direction.DOWN;
+            case GLFW_KEY_D -> Snake.Direction.RIGHT;
+            default -> this.snake.direction;
+        };
+
+        if (whereIWantToGo != this.snake.direction && whereIWantToGo != this.snake.prevDirection.reverse()) {
+            this.snake.setDirection(whereIWantToGo);
+        }
     }
 }
