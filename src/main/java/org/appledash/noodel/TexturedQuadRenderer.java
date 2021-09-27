@@ -9,13 +9,12 @@ import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 
 public class TexturedQuadRenderer {
-    private static final int QUAD_VERTICES = 6;
     private final int vertexBufferId;
     private final int uvBufferId;
     private final ShaderProgram shader;
     private final int textureUniformId;
     private final SpriteSheet spriteSheet;
-    private Tesselator2D tesselator2D = new Tesselator2D();
+    private final Tesselator2D tesselator2D = new Tesselator2D();
 
     public TexturedQuadRenderer(Texture2D texture, int spriteWidth, int spriteHeight) {
         this.spriteSheet = new SpriteSheet(texture, spriteWidth, spriteHeight);
@@ -38,30 +37,37 @@ public class TexturedQuadRenderer {
         float tSz = this.spriteSheet.getTexture().getWidth();
         float bSz = this.spriteSheet.getSpriteWidth();
 
-        this.tesselator2D.reset();
-        this.tesselator2D.vertices(
+        this.tesselator2D.putVertices(
+                new float[]{
+                        x, y, // bottom left
+                        (x + w), y, // bottom right
+                        x, (y + h), // top left
 
-        )
-
-      /*  this.putData(new float[]{
-                x, y, // bottom left
-                (x + w), y, // bottom right
-                x, (y + h), // top left
-
-                x, (y + h), // top left
-                (x + w), (y + h), // top right
-                (x + w), y // bottom right
-        }, new float[] {
-                (u / tSz), (v + bSz) / tSz,
-                (u + bSz) / tSz, (v + bSz) / tSz,
-                (u / tSz), (v / tSz),
-                (u / tSz), (v / tSz),
-                (u + bSz) / tSz, v / tSz,
-                (u + bSz) / tSz, (v + bSz) / tSz
-        });*/
+                        x, (y + h), // top left
+                        (x + w), (y + h), // top right
+                        (x + w), y // bottom right
+                }, new float[] {
+                        (u / tSz), (v + bSz) / tSz,
+                        (u + bSz) / tSz, (v + bSz) / tSz,
+                        (u / tSz), (v / tSz),
+                        (u / tSz), (v / tSz),
+                        (u + bSz) / tSz, v / tSz,
+                        (u + bSz) / tSz, (v + bSz) / tSz
+                }
+        );
     }
 
     public void draw() {
+        float[] vertices = this.tesselator2D.getVertices();
+        float[] uvs = this.tesselator2D.getUvs();
+        int count = this.tesselator2D.getUsedCapacity();
+
+        glBindBuffer(GL_ARRAY_BUFFER, this.vertexBufferId);
+        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ARRAY_BUFFER, this.uvBufferId);
+        glBufferData(GL_ARRAY_BUFFER, uvs, GL_STATIC_DRAW);
+
         this.shader.use();
 
         glActiveTexture(GL_TEXTURE0);
@@ -94,12 +100,14 @@ public class TexturedQuadRenderer {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glDrawArrays(GL_TRIANGLES, 0, QUAD_VERTICES);
+        glDrawArrays(GL_TRIANGLES, 0, count / 2);
 
         glDisable(GL_BLEND);
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
+
+        this.tesselator2D.reset();
     }
 
     public void delete() {
@@ -110,16 +118,5 @@ public class TexturedQuadRenderer {
         if (this.shader != null) {
             this.shader.delete();
         }
-    }
-
-    private void putData(float[] vertices, float[] uvs) {
-        assert (vertices.length == QUAD_VERTICES * 2);
-        assert (uvs.length == QUAD_VERTICES * 2);
-
-        glBindBuffer(GL_ARRAY_BUFFER, this.vertexBufferId);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ARRAY_BUFFER, this.uvBufferId);
-        glBufferData(GL_ARRAY_BUFFER, uvs, GL_STATIC_DRAW);
     }
 }

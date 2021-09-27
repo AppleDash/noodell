@@ -163,6 +163,8 @@ public class NoodelMain {
                 this.drawTile(appleLocation.x(), appleLocation.y(), Terrain.RED_WOOL);
             }
 
+            this.quadRenderer.draw();
+
             glfwSwapBuffers(this.window);
             glfwPollEvents();
 
@@ -233,7 +235,7 @@ public class NoodelMain {
         int startX = tileX * TILE_SIZE;
         int startY = tileY * TILE_SIZE;
         this.quadRenderer.putQuad(startX, startY, TILE_SIZE, TILE_SIZE, blockID);
-        this.quadRenderer.draw();
+        // this.quadRenderer.draw();
     }
 
     public static void main(String[] args) {
