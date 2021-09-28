@@ -57,9 +57,9 @@ public final class NoodelMain {
         }
 
         glfwSetKeyCallback(this.window, this::keyCallback);
-        glfwSetWindowSizeCallback(this.window, (window, width, height) -> {
-            glViewport(0, 0, width, height);
-        });
+        glfwSetWindowSizeCallback(this.window, (window, width, height) ->
+                glViewport(0, 0, width, height)
+        );
 
         /* Center the window */
         try (MemoryStack stack = stackPush()) {

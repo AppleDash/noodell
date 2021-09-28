@@ -8,7 +8,6 @@ import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 
 import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.opengl.GL20.glCreateShader;
 
 public final class ShaderProgram {
     private final int programId;
