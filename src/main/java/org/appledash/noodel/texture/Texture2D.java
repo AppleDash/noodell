@@ -1,12 +1,12 @@
 package org.appledash.noodel.texture;
 
+import org.appledash.noodel.util.ResourceHelper;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.lwjgl.BufferUtils;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
 import static org.lwjgl.opengl.GL11.*;
 
@@ -14,9 +14,9 @@ public class Texture2D {
     private final int textureId;
     private final int width;
     private final int height;
-    private final ByteBuffer buffer;
+    private final @NotNull ByteBuffer buffer;
 
-    public Texture2D(BufferedImage bufferedImage) {
+    public Texture2D(@NotNull BufferedImage bufferedImage) {
         this.textureId = glGenTextures();
         this.width = bufferedImage.getWidth();
         this.height = bufferedImage.getHeight();
@@ -58,15 +58,13 @@ public class Texture2D {
         return this.height;
     }
 
-    public static Texture2D fromResource(String resourcePath) {
-        try {
-            return new Texture2D(ImageIO.read(Objects.requireNonNull(Texture2D.class.getClassLoader().getResourceAsStream(resourcePath))));
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load resource " + resourcePath, e);
-        }
+    @Contract("_ -> new")
+    public static @NotNull Texture2D fromResource(@NotNull String resourcePath) {
+        return new Texture2D(ResourceHelper.getImage(resourcePath));
     }
 
-    private static ByteBuffer swizzleBufferedImage(BufferedImage bufferedImage) {
+    @SuppressWarnings("MagicNumber")
+    private static @NotNull ByteBuffer swizzleBufferedImage(@NotNull BufferedImage bufferedImage) {
         ByteBuffer buffer = BufferUtils.createByteBuffer(bufferedImage.getWidth() * bufferedImage.getHeight() * 4);
 
         int[] pixels = new int[bufferedImage.getWidth() * bufferedImage.getHeight()];
@@ -76,10 +74,13 @@ public class Texture2D {
             for (int y = 0; y < bufferedImage.getHeight(); y++) {
                 int pixel = pixels[y * bufferedImage.getWidth() + x];
 
+                // RGBA
+                // @formatter:off
                 buffer.put((byte) ((pixel >> 16) & 0xFF));
-                buffer.put((byte) ((pixel >> 8) & 0xFF));
-                buffer.put((byte) ((pixel) & 0xFF));
+                buffer.put((byte) ((pixel >>  8) & 0xFF));
+                buffer.put((byte) ((pixel      ) & 0xFF));
                 buffer.put((byte) ((pixel >> 24) & 0xFF));
+                // @formatter:on
             }
         }
 

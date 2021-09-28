@@ -1,11 +1,6 @@
 package org.appledash.noodel.util;
 
-import org.lwjgl.system.MemoryStack;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.IntBuffer;
-import java.nio.charset.StandardCharsets;
+import org.jetbrains.annotations.NotNull;
 
 import static org.lwjgl.opengl.GL20.*;
 
@@ -53,12 +48,6 @@ public final class ShaderProgram {
         glDeleteShader(fragmentId);
     }
 
-    public void setUniform3f(int location, float x, float y, float z) {
-        glUseProgram(this.programId);
-        glUniform3f(location, x, y, z);
-        glUseProgram(0);
-    }
-
     public int getUniformLocation(String name) {
         return glGetUniformLocation(this.programId, name);
     }
@@ -71,40 +60,31 @@ public final class ShaderProgram {
         glDeleteShader(this.programId);
     }
 
-    public static ShaderProgram loadFromResources(String resourceBaseName) throws IOException {
-        InputStream vertInput = ShaderProgram.class.getClassLoader().getResourceAsStream(resourceBaseName + ".vert");
-        InputStream fragInput = ShaderProgram.class.getClassLoader().getResourceAsStream(resourceBaseName + ".frag");
-
-        if (vertInput == null || fragInput == null) {
-            throw new IOException("Could not find vertex/fragment shader");
-        }
-
-        String vertSource = new String(vertInput.readAllBytes(), StandardCharsets.UTF_8);
-        String fragSource = new String(fragInput.readAllBytes(), StandardCharsets.UTF_8);
+    public static @NotNull ShaderProgram loadFromResources(@NotNull String resourceBaseName) {
+        String vertSource = ResourceHelper.getText(resourceBaseName + ".vert");
+        String fragSource = ResourceHelper.getText(resourceBaseName + ".frag");
 
         return new ShaderProgram(vertSource, fragSource);
     }
 
     private static void checkShaderCompilationStatus(String tag, int shaderId, boolean isProgram) {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            IntBuffer pStatusBuffer = stack.mallocInt(1);
-            IntBuffer pInfoLogLength = stack.mallocInt(1);
+        int status;
+        int infoLogLength;
 
-            if (isProgram) {
-                glGetProgramiv(shaderId, GL_LINK_STATUS, pStatusBuffer);
-                glGetProgramiv(shaderId, GL_INFO_LOG_LENGTH, pInfoLogLength);
-            } else {
-                glGetShaderiv(shaderId, GL_COMPILE_STATUS, pStatusBuffer);
-                glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, pInfoLogLength);
-            }
+        if (isProgram) {
+            status = glGetProgrami(shaderId, GL_LINK_STATUS);
+            infoLogLength = glGetProgrami(shaderId, GL_INFO_LOG_LENGTH);
+        } else {
+            status = glGetShaderi(shaderId, GL_COMPILE_STATUS);
+            infoLogLength = glGetShaderi(shaderId, GL_INFO_LOG_LENGTH);
+        }
 
-            if (pInfoLogLength.get() > 0) {
-                throw new CompilationException(
-                        pStatusBuffer.get(),
-                        tag,
-                        isProgram ? glGetProgramInfoLog(shaderId) : glGetShaderInfoLog(shaderId)
-                );
-            }
+        if (infoLogLength > 0) {
+            throw new CompilationException(
+                    status,
+                    tag,
+                    isProgram ? glGetProgramInfoLog(shaderId) : glGetShaderInfoLog(shaderId)
+            );
         }
     }
 

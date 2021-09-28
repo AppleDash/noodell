@@ -4,8 +4,6 @@ import org.appledash.noodel.texture.SpriteSheet;
 import org.appledash.noodel.texture.Texture2D;
 import org.appledash.noodel.util.ShaderProgram;
 
-import java.io.IOException;
-
 import static org.lwjgl.opengl.GL20.*;
 
 public class TexturedQuadRenderer {
@@ -20,12 +18,7 @@ public class TexturedQuadRenderer {
         this.vertexBufferId = glGenBuffers();
         this.uvBufferId = glGenBuffers();
 
-        try {
-            this.shader = ShaderProgram.loadFromResources("shaders/2d");
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load shader!", e);
-        }
-
+        this.shader = ShaderProgram.loadFromResources("shaders/2d");
         this.shader.use();
         glUniform1i(this.shader.getUniformLocation("textureSampler"), 0);
     }

@@ -168,18 +168,19 @@ public final class NoodelMain {
 
         Vec2 nextPos = this.snake.getNextPos();
 
-        if (nextPos.x() == 0 || nextPos.x() == TILES_X || nextPos.y() == 0 || nextPos.y() == TILES_Y) {
+        /* About to collide with the border */
+        if (nextPos.x() == 0 || nextPos.x() == (TILES_X - 1) || nextPos.y() == 0 || nextPos.y() == (TILES_Y - 1)) {
             this.wantReset = true;
         }
 
         /* this is a little weird, but the reason I do it this way is that the snake's path is a linked list,
-         * and iterating like this is faster. */
+         * and iterating like this is faster than using a bounded indexed for loop. */
         int pathSize = this.snake.getPath().size();
         Iterator<Vec2> iter = this.snake.getPath().iterator();
 
         for (int i = 0; iter.hasNext(); i++) {
             /* don't care about colliding with our own head or our tail (said tail is about to disappear) */
-            if (i == 0 || i == pathSize - 2) {
+            if (i == 0 || i == (pathSize - 1)) {
                 continue;
             }
 
