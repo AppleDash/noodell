@@ -89,7 +89,12 @@ public final class NoodelMain {
             this.drawTiles(this.world.getApples(), Terrain.RED_WOOL);
             this.drawTiles(this.world.getSnake().getPath(), Terrain.LIME_WOOL);
 
-            this.quadRenderer.draw();
+            this.quadRenderer.draw(this.quadRenderer.shader);
+
+            this.quadRenderer.putColoredQuad(100, 100, 100, 100, 1, 0, 0, 1);
+            this.quadRenderer.draw(this.quadRenderer.shader2);
+
+            this.quadRenderer.reset();
 
             glfwSwapBuffers(this.window.getWindowId());
             glfwPollEvents();

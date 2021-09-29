@@ -1,13 +1,16 @@
 package org.appledash.noodel.util;
 
+import org.appledash.noodel.render.VertexFormat;
 import org.jetbrains.annotations.NotNull;
 
 import static org.lwjgl.opengl.GL20.*;
 
 public final class ShaderProgram {
     private final int programId;
+    private final VertexFormat vertexFormat;
+    private final int[] buffers;
 
-    private ShaderProgram(String vertexCode, String fragmentCode) {
+    private ShaderProgram(String vertexCode, String fragmentCode, VertexFormat vertexFormat) {
         int vertexId = glCreateShader(GL_VERTEX_SHADER);
         int fragmentId = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -46,6 +49,11 @@ public final class ShaderProgram {
         glDetachShader(this.programId, fragmentId);
         glDeleteShader(vertexId);
         glDeleteShader(fragmentId);
+
+        this.vertexFormat = vertexFormat;
+        this.buffers = new int[vertexFormat.attributeSizes.length];
+
+        glGenBuffers(this.buffers);
     }
 
     public int getUniformLocation(String name) {
@@ -57,14 +65,15 @@ public final class ShaderProgram {
     }
 
     public void delete() {
+        glDeleteBuffers(this.buffers);
         glDeleteShader(this.programId);
     }
 
-    public static @NotNull ShaderProgram loadFromResources(@NotNull String resourceBaseName) {
+    public static @NotNull ShaderProgram loadFromResources(@NotNull String resourceBaseName, VertexFormat vertexFormat) {
         String vertSource = ResourceHelper.getText(resourceBaseName + ".vert");
         String fragSource = ResourceHelper.getText(resourceBaseName + ".frag");
 
-        return new ShaderProgram(vertSource, fragSource);
+        return new ShaderProgram(vertSource, fragSource, vertexFormat);
     }
 
     private static void checkShaderCompilationStatus(String tag, int shaderId, boolean isProgram) {
@@ -86,6 +95,14 @@ public final class ShaderProgram {
                     isProgram ? glGetProgramInfoLog(shaderId) : glGetShaderInfoLog(shaderId)
             );
         }
+    }
+
+    public VertexFormat getVertexFormat() {
+        return vertexFormat;
+    }
+
+    public int[] getBuffers() {
+        return buffers;
     }
 
     public static final class CompilationException extends RuntimeException {

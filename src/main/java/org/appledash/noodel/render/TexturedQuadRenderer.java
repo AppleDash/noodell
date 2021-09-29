@@ -11,7 +11,9 @@ import static org.lwjgl.opengl.GL20.*;
 public class TexturedQuadRenderer {
     private final int vertexBufferId;
     private final int uvBufferId;
-    private final ShaderProgram shader;
+    public final ShaderProgram shader;
+    public final ShaderProgram shader2;
+
     private final SpriteSheet spriteSheet;
     private final Tesselator2D tesselator2D = new Tesselator2D();
 
@@ -20,9 +22,12 @@ public class TexturedQuadRenderer {
         this.vertexBufferId = glGenBuffers();
         this.uvBufferId = glGenBuffers();
 
-        this.shader = ShaderProgram.loadFromResources("shaders/2dtexture");
+        this.shader = ShaderProgram.loadFromResources("shaders/2dtexture", VertexFormat.POSITION_TEXTURE_2D);
         this.shader.use();
         glUniform1i(this.shader.getUniformLocation("textureSampler"), 0);
+
+        this.shader2 = ShaderProgram.loadFromResources("shaders/2d", VertexFormat.POSITION_COLOR_2D);
+
     }
 
     public void putQuad(int x, int y, int w, int h, int spriteIndex) {
@@ -31,43 +36,94 @@ public class TexturedQuadRenderer {
         int v = uv & Short.MAX_VALUE;
 
         this.tesselator2D.putVertices(
+                VertexFormat.POSITION_TEXTURE_2D,
                 this.generateQuadVertices(x, y, w, h, u, v)
         );
     }
 
+    public void putColoredQuad(int x, int y, int w, int h, float r, float g, float b, float a) {
+        this.tesselator2D.putVertices(
+                VertexFormat.POSITION_COLOR_2D,
+                this.generateColoredQuadVertices(x, y, w, h, r, g, b, a)
+        );
+    }
 
-    public void draw() {
-        FloatBuffer vertices = this.tesselator2D.getVertices();
-        FloatBuffer uvs = this.tesselator2D.getVertices();
+    private float[] generateColoredQuadVertices(int x, int y, int w, int h, float r, float g, float b, float a) {
+        return new float[] {
+                x, y,       // bottom left
+                r, g, b, a,
 
-        this.shader.use();
+                (x + w), y, // bottom right
+                r, g, b, a,
 
-        glActiveTexture(GL_TEXTURE0);
-        this.spriteSheet.getTexture().bind();
+                x, (y + h), // top left
+                r, g, b, a,
 
-        /* load in the vertices, at vertex index 0, 2, 4, etc */
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, this.vertexBufferId);
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, Float.BYTES * 4, 0);
-        glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+                x, (y + h),  // top left
+                r, g, b, a,
 
-        /* load in the UVs, at vertex index 1, 3, 5, etc */
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, this.uvBufferId);
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, Float.BYTES * 4, Float.BYTES * 2); // offset 2
-        glBufferData(GL_ARRAY_BUFFER, uvs, GL_STATIC_DRAW);
+                (x + w), (y + h), // top right
+                r, g, b, a,
+
+                (x + w), y, // bottom right
+                r, g, b, a
+        };
+    }
+
+
+    public void draw(ShaderProgram shader) {
+        VertexFormat vertexFormat = shader.getVertexFormat();
+        int attributeCount = vertexFormat.attributeSizes.length;
+        FloatBuffer[] buffers = new FloatBuffer[attributeCount];
+        int[] vertexBuffers = shader.getBuffers();
+
+        int totalSize = 0;
+
+        for (int i = 0; i < attributeCount; i++) {
+            buffers[i] = this.tesselator2D.getVertices(vertexFormat);
+            totalSize += vertexFormat.attributeSizes[i];
+        }
+
+        if (vertexFormat == VertexFormat.POSITION_TEXTURE_2D) {
+            glActiveTexture(GL_TEXTURE0);
+            this.spriteSheet.getTexture().bind();
+        }
+
+        shader.use();
+
+        int offset = 0;
+        for (int i = 0; i < attributeCount; i++) {
+
+            glEnableVertexAttribArray(i);
+            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[i]);
+            glVertexAttribPointer(i, vertexFormat.attributeSizes[i] / Float.BYTES, GL_FLOAT, false, totalSize, offset);
+            glBufferData(GL_ARRAY_BUFFER, buffers[i], GL_STATIC_DRAW);
+
+            offset = vertexFormat.attributeSizes[i];
+        }
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glDrawArrays(GL_TRIANGLES, 0, vertices.limit() / 2);
+        glDrawArrays(GL_TRIANGLES, 0, buffers[0].limit() / attributeCount);
 
         glDisable(GL_BLEND);
 
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
+        for (int i = 0; i < attributeCount; i++) {
+            glDisableVertexAttribArray(i);
+        }
+    }
 
+    public void reset() {
         this.tesselator2D.reset();
+    }
+
+    private int sizeof(ShaderProgram shader) {
+        return switch (shader.getVertexFormat()) {
+            case POSITION_COLOR_2D -> (Float.BYTES * 2) + (Float.BYTES * 4);
+            case POSITION_TEXTURE_2D -> Float.BYTES * 4;
+            default -> throw new IllegalStateException("yall usin a weird vertex format bro");
+        };
     }
 
     public void delete() {
