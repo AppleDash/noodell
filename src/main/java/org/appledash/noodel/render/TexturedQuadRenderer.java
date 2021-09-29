@@ -4,6 +4,8 @@ import org.appledash.noodel.texture.SpriteSheet;
 import org.appledash.noodel.texture.Texture2D;
 import org.appledash.noodel.util.ShaderProgram;
 
+import java.nio.FloatBuffer;
+
 import static org.lwjgl.opengl.GL20.*;
 
 public class TexturedQuadRenderer {
@@ -18,7 +20,7 @@ public class TexturedQuadRenderer {
         this.vertexBufferId = glGenBuffers();
         this.uvBufferId = glGenBuffers();
 
-        this.shader = ShaderProgram.loadFromResources("shaders/2d");
+        this.shader = ShaderProgram.loadFromResources("shaders/2dtexture");
         this.shader.use();
         glUniform1i(this.shader.getUniformLocation("textureSampler"), 0);
     }
@@ -28,53 +30,37 @@ public class TexturedQuadRenderer {
         int u = (uv >> Short.SIZE) & Short.MAX_VALUE;
         int v = uv & Short.MAX_VALUE;
 
-        float tSz = this.spriteSheet.getTexture().getWidth();
-        float bSz = this.spriteSheet.getSpriteWidth();
-
         this.tesselator2D.putVertices(
-                new float[] {
-                        x, y, // bottom left
-                        (x + w), y, // bottom right
-                        x, (y + h), // top left
-
-                        x, (y + h), // top left
-                        (x + w), (y + h), // top right
-                        (x + w), y // bottom right
-                }, new float[] {
-                        (u / tSz), (v + bSz) / tSz,
-                        (u + bSz) / tSz, (v + bSz) / tSz,
-                        (u / tSz), (v / tSz),
-                        (u / tSz), (v / tSz),
-                        (u + bSz) / tSz, v / tSz,
-                        (u + bSz) / tSz, (v + bSz) / tSz
-                }
+                this.generateQuadVertices(x, y, w, h, u, v)
         );
     }
 
+
     public void draw() {
-        float[] vertices = this.tesselator2D.getVertices();
-        float[] uvs = this.tesselator2D.getUvs();
-        int count = this.tesselator2D.getUsedCapacity();
+        FloatBuffer vertices = this.tesselator2D.getVertices();
+        FloatBuffer uvs = this.tesselator2D.getVertices();
 
         this.shader.use();
 
         glActiveTexture(GL_TEXTURE0);
         this.spriteSheet.getTexture().bind();
 
+        /* load in the vertices, at vertex index 0, 2, 4, etc */
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, this.vertexBufferId);
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, Float.BYTES * 4, 0);
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
 
+        /* load in the UVs, at vertex index 1, 3, 5, etc */
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, this.uvBufferId);
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, false, Float.BYTES * 4, Float.BYTES * 2); // offset 2
         glBufferData(GL_ARRAY_BUFFER, uvs, GL_STATIC_DRAW);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glDrawArrays(GL_TRIANGLES, 0, count / 2);
+        glDrawArrays(GL_TRIANGLES, 0, vertices.limit() / 2);
 
         glDisable(GL_BLEND);
 
@@ -92,5 +78,30 @@ public class TexturedQuadRenderer {
         if (this.shader != null) {
             this.shader.delete();
         }
+    }
+
+    private float[] generateQuadVertices(int x, int y, int w, int h, int u, int v) {
+        float tSz = this.spriteSheet.getTexture().getWidth();
+        float bSz = this.spriteSheet.getSpriteWidth();
+
+        return new float[]{
+                x, y,       // bottom left
+                (u / tSz), (v + bSz) / tSz,
+
+                (x + w), y, // bottom right
+                (u + bSz) / tSz, (v + bSz) / tSz,
+
+                x, (y + h), // top left
+                (u / tSz), (v / tSz),
+
+                x, (y + h),  // top left
+                (u / tSz), (v / tSz),
+
+                (x + w), (y + h), // top right
+                (u + bSz) / tSz, v / tSz,
+
+                (x + w), y, // bottom right
+                (u + bSz) / tSz, (v + bSz) / tSz
+        };
     }
 }

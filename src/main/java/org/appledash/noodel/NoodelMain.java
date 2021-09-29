@@ -6,74 +6,50 @@ import org.appledash.noodel.texture.Texture2D;
 import org.appledash.noodel.util.FrameCounter;
 import org.appledash.noodel.util.Vec2;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.system.MemoryStack;
 
 import javax.swing.*;
-import java.nio.IntBuffer;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glGenVertexArrays;
-import static org.lwjgl.system.MemoryStack.stackPush;
-import static org.lwjgl.system.MemoryUtil.NULL;
 
 public final class NoodelMain {
+    /* the actual window size */
     private static final int DEFAULT_WIDTH = 1600;
     private static final int DEFAULT_HEIGHT = 1200;
+
+    /* correspond to the values mapped in the shader */
     private static final int SCALED_WIDTH = 800;
     private static final int SCALED_HEIGHT = 600;
+
     private static final int TILE_SIZE = 10;
     private static final int TILES_X = SCALED_WIDTH / TILE_SIZE;
     private static final int TILES_Y = SCALED_HEIGHT / TILE_SIZE;
-    private static final int UPDATE_FREQUENCY = 100;
+    private static final int UPDATE_INTERVAL = 100; /* in milliseconds */
 
     private final World world = new World(TILES_X, TILES_Y);
     private final FrameCounter frameCounter = new FrameCounter();
 
-    private long window;
+    private GameWindow window;
     private TexturedQuadRenderer quadRenderer;
 
+    private boolean paused;
     private long lastUpdate = -1;
 
     private void init() {
-        glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        this.window = new GameWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
-        this.window = glfwCreateWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT, "Noodell", NULL, NULL);
-
-        if (this.window == NULL) {
-            throw new IllegalStateException("Failed to create window");
-        }
-
-        glfwSetKeyCallback(this.window, this::keyCallback);
-        glfwSetWindowSizeCallback(this.window, (window, width, height) ->
+        this.window.setKeyCallback(this::keyCallback);
+        this.window.setSizeCallback((window, width, height) ->
                 glViewport(0, 0, width, height)
         );
 
-        /* Center the window */
-        try (MemoryStack stack = stackPush()) {
-            IntBuffer pWidth = stack.mallocInt(1);
-            IntBuffer pHeight = stack.mallocInt(1);
-
-            glfwGetWindowSize(this.window, pWidth, pHeight);
-
-            GLFWVidMode vidMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-
-            assert vidMode != null;
-            glfwSetWindowPos(
-                    this.window,
-                    (vidMode.width() - pWidth.get()) / 2,
-                    (vidMode.height() - pHeight.get()) / 2
-            );
-        }
-
-        glfwMakeContextCurrent(this.window);
+        this.window.centerOnScreen();
+        this.window.makeContextCurrent();
         glfwSwapInterval(1); // vsync
-        glfwShowWindow(this.window);
+        this.window.show();
 
         GL.createCapabilities();
 
@@ -88,10 +64,10 @@ public final class NoodelMain {
     private void mainLoop() {
         glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
-        while (!glfwWindowShouldClose(this.window)) {
+        while (!this.window.shouldClose()) {
             long frameStart = System.currentTimeMillis();
 
-            if ((frameStart - this.lastUpdate) >= UPDATE_FREQUENCY) {
+            if (((frameStart - this.lastUpdate) >= UPDATE_INTERVAL) && !this.paused) {
                 this.world.update();
                 this.lastUpdate = frameStart;
             }
@@ -115,7 +91,7 @@ public final class NoodelMain {
 
             this.quadRenderer.draw();
 
-            glfwSwapBuffers(this.window);
+            glfwSwapBuffers(this.window.getWindowId());
             glfwPollEvents();
 
             this.frameCounter.update(System.currentTimeMillis() - frameStart);
@@ -136,10 +112,15 @@ public final class NoodelMain {
 
     private void keyCallback(long window, int key, int scancode, int action, int mods) {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
-            glfwSetWindowShouldClose(this.window, true);
+            this.paused = !this.paused;
+            // this.window.setShouldClose(true);
         }
 
         if (action != GLFW_PRESS) {
+            return;
+        }
+
+        if (this.paused) {
             return;
         }
 

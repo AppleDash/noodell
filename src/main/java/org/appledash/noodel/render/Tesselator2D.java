@@ -1,84 +1,55 @@
 package org.appledash.noodel.render;
 
 import org.appledash.noodel.util.Mth;
+import org.lwjgl.BufferUtils;
 
-import java.util.Arrays;
+import java.nio.FloatBuffer;
 
 public class Tesselator2D {
     private static final int INITIAL_CAPACITY = 64; /* chosen by fair dice roll */
     private static final float GROW_FACTOR = 1.5f;
 
-    private int capacity = INITIAL_CAPACITY;
-    private int usedCapacity;
-
-    private float[] vertices = new float[INITIAL_CAPACITY];
-    private float[] uvs = new float[INITIAL_CAPACITY];
+    private FloatBuffer verticesBuffer = BufferUtils.createFloatBuffer(INITIAL_CAPACITY);
 
     /**
      * Put some vertices with UVs into the buffer. The same number of UVs as vertices must be supplied.
+     * UVs must be interpolated with vertices: [vertex, uv, vertex, uv]
      *
-     * @param vertices Vertices
-     * @param uvs UVs
+     * @param vertices Vertices with UVs
      */
-    public void putVertices(float[] vertices, float[] uvs) {
-        assert(vertices.length == uvs.length);
-
-        this.ensureCapacity(this.usedCapacity + vertices.length);
-
-        System.arraycopy(vertices, 0, this.vertices, this.usedCapacity, vertices.length);
-        System.arraycopy(uvs, 0, this.uvs, this.usedCapacity, uvs.length);
-
-        this.usedCapacity += vertices.length;
+    public void putVertices(float[] vertices) {
+        this.ensureCapacity(this.verticesBuffer.position() + vertices.length);
+        this.verticesBuffer.put(vertices);
     }
 
-
-    /**
-     * Get how many floats are currently in each buffer.
-     * This value can be divided by the number of dimensions in order to get the number of vertices.
-     *
-     * @return Number of floats in each buffer.
-     */
-    public int getUsedCapacity() {
-        return this.usedCapacity;
-    }
 
     /**
      * Get the raw vertex data in the buffer.
      *
      * @return Float array of vertex data.
      */
-    public float[] getVertices() {
-        return Arrays.copyOf(this.vertices, this.usedCapacity);
-    }
-
-    /**
-     * Get the UV dats in the buffer.
-     *
-     * @return Float array of UV data.
-     */
-    public float[] getUvs() {
-        return Arrays.copyOf(this.uvs, this.usedCapacity);
+    public FloatBuffer getVertices() {
+        FloatBuffer buffer = this.verticesBuffer.duplicate();
+        buffer.flip();
+        return buffer;
     }
 
     /**
      * Reset the Tesselator, readying it for new vertices.
      */
     public void reset() {
-        this.usedCapacity = 0;
+        this.verticesBuffer.rewind();
     }
 
     private void ensureCapacity(int desiredCapacity) {
-        if (this.capacity < desiredCapacity) {
+        if (this.verticesBuffer.capacity() < desiredCapacity) {
             int newCapacity = Mth.ceil(desiredCapacity * GROW_FACTOR);
-            float[] newVertices = new float[newCapacity];
-            float[] newUvs = new float[newCapacity];
+            FloatBuffer newVerticesBuffer = BufferUtils.createFloatBuffer(newCapacity);
+            this.verticesBuffer.flip();
 
-            System.arraycopy(this.vertices, 0, newVertices, 0, this.vertices.length);
-            System.arraycopy(this.uvs, 0, newUvs, 0, this.uvs.length);
+            newVerticesBuffer.put(this.verticesBuffer);
 
-            this.vertices = newVertices;
-            this.uvs = newUvs;
-            this.capacity = newCapacity;
+            this.verticesBuffer = newVerticesBuffer;
         }
     }
 }

@@ -26,6 +26,14 @@ public class World {
             this.wantReset = false;
         }
 
+        Vec2 nextPos = this.snake.getNextPos();
+
+        /* About to collide with the border */
+        if (nextPos.x() == 0 || nextPos.x() == (this.tilesX - 1) || nextPos.y() == 0 || nextPos.y() == (this.tilesY - 1)) {
+            this.wantReset = true;
+            return;
+        }
+
         boolean hasEaten = false;
         for (Iterator<Vec2> iter = this.apples.iterator(); iter.hasNext();) {
             Vec2 applePos = iter.next();
@@ -42,28 +50,16 @@ public class World {
             this.spawnApple();
         }
 
-        Vec2 nextPos = this.snake.getNextPos();
 
-        /* About to collide with the border */
-        if (nextPos.x() == 0 || nextPos.x() == (this.tilesX - 1) || nextPos.y() == 0 || nextPos.y() == (this.tilesY - 1)) {
-            this.wantReset = true;
-        }
 
         /* this is a little weird, but the reason I do it this way is that the snake's path is a linked list,
          * and iterating like this is faster than using a bounded indexed for loop. */
         int pathSize = this.snake.getPath().size();
-        Iterator<Vec2> iter = this.snake.getPath().iterator();
-
-        for (int i = 0; iter.hasNext(); i++) {
-            /* don't care about colliding with our own head or our tail (said tail is about to disappear) */
-            if (i == 0 || i == (pathSize - 1)) {
-                continue;
-            }
-
-            if (nextPos.equals(iter.next())) {
-                this.wantReset = true;
-                break;
-            }
+        if (this.snake.getPath()
+                .stream()
+                .skip(1).limit(pathSize - 2)
+                .anyMatch(pos -> pos.equals(nextPos))) {
+            this.wantReset = true;
         }
     }
 

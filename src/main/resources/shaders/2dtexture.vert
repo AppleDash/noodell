@@ -1,9 +1,12 @@
 #version 330 core
 
-layout(location = 0) in vec2 vertexPosition_screenSpace;
-layout(location = 1) in vec4 vertexColor;
+// uniform vec3 color;
 
-out vec4 fragmentColor;
+layout(location = 0) in vec2 vertexPosition_screenSpace;
+layout(location = 1) in vec2 vertexUV;
+
+// out vec3 fragmentColor;
+out vec2 UV;
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
@@ -14,5 +17,6 @@ void main() {
 
     gl_Position = vec4(vertexPosition_homoSpace, 0, 1);
 
-    fragmentColor = vertexColor;
+    // fragmentColor = color;
+    UV = vertexUV;
 }
